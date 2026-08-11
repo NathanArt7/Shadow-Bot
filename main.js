@@ -34,9 +34,8 @@ const fetch = require('node-fetch');
 const ytdl = require('ytdl-core');
 const axios = require('axios');
 const ffmpeg = require('fluent-ffmpeg');
-const { isSudo, isGroupActive } = require('./lib/index');
+const { isSudo } = require('./lib/index');
 const isOwnerOrSudo = require('./lib/isOwner');
-const activateCommand = require('./commands/activate');
 const respectCommand = require('./commands/respect');
 const { autotypingCommand, isAutotypingEnabled, handleAutotypingForMessage, handleAutotypingForCommand, showTypingAfterCommand } = require('./commands/autotyping');
 const { autoreadCommand, isAutoreadEnabled, handleAutoread } = require('./commands/autoread');
@@ -243,12 +242,6 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 });
             }
             return;
-        }
-
-        // Group activation gate: bot is disabled by default in a group until the owner runs .activate on
-        if (isGroup && !isOwnerOrSudoCheck && !userMessage.startsWith('.activate')) {
-            const groupIsActive = await isGroupActive(chatId);
-            if (!groupIsActive) return;
         }
 
         // Quiz (.quizz) takes priority over everything else on this message: topic
@@ -532,12 +525,6 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 break;
             case userMessage === '.owner':
                 await ownerCommand(sock, chatId);
-                break;
-            case userMessage.startsWith('.activate'):
-                {
-                    const activateArg = userMessage.slice(9).trim();
-                    await activateCommand(sock, chatId, message, activateArg, isOwnerOrSudoCheck, senderId);
-                }
                 break;
             case userMessage.startsWith('.respect'):
                 {
@@ -1186,7 +1173,6 @@ async function handleGroupParticipantUpdate(sock, update) {
         // Handle promotion events
         if (action === 'promote') {
             if (!isPublic) return;
-            if (!(await isGroupActive(id))) return;
             await handlePromotionEvent(sock, id, participants, author);
             return;
         }
@@ -1194,7 +1180,6 @@ async function handleGroupParticipantUpdate(sock, update) {
         // Handle demotion events
         if (action === 'demote') {
             if (!isPublic) return;
-            if (!(await isGroupActive(id))) return;
             await handleDemotionEvent(sock, id, participants, author);
             return;
         }

@@ -73,7 +73,6 @@ async function helpCommand(sock, chatId, message) {
 
 ╔═══════════════════╗
 🔒 *Owner Commands*:
-║ ➤ .activate <on/off>
 ║ ➤ .respect <add/remove/list>
 ║ ➤ .mode <public/private>
 ║ ➤ .clearsession

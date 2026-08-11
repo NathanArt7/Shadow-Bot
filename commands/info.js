@@ -61,7 +61,6 @@ const CATEGORIES = [
         emoji: '🔒',
         title: 'Propriétaire',
         items: [
-            ['.activate <on/off>', 'Active/désactive le bot dans le groupe courant.'],
             ['.respect <add/remove/list>', 'Gère la liste des utilisateurs toujours traités poliment par le chatbot.'],
             ['.mode <public/private>', 'Bascule le bot en mode public ou privé (accès restreint).'],
             ['.clearsession', 'Nettoie les fichiers de session Baileys (sauf creds.json).'],

@@ -10,7 +10,6 @@ function readJsonSafe(path, fallback) {
 }
 
 const isOwnerOrSudo = require('../lib/isOwner');
-const { isGroupActive } = require('../lib/index');
 
 async function settingsCommand(sock, chatId, message) {
     try {
@@ -56,10 +55,8 @@ async function settingsCommand(sock, chatId, message) {
         lines.push(`• Anticall: ${anticall.enabled ? 'ON' : 'OFF'}`);
         lines.push(`• Auto Reaction: ${autoReaction ? 'ON' : 'OFF'}`);
         if (groupId) {
-            const groupActive = await isGroupActive(groupId);
             lines.push('');
             lines.push(`Group: ${groupId}`);
-            lines.push(`• Bot Active: ${groupActive ? 'ON' : 'OFF'}`);
             if (antilinkOn) {
                 const al = userGroupData.antilink[groupId];
                 lines.push(`• Antilink: ON (action: ${al.action || 'delete'})`);
