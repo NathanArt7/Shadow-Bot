@@ -10,6 +10,22 @@
  * - Pair Code implementation inspired by TechGod143 & DGXEON
  */
 require('./settings')
+
+// Make the bundled ffmpeg-static binary available to every `exec("ffmpeg ...")`
+// call across the codebase (sticker/video/audio conversion) by putting it on
+// PATH - needed on hosts like Render that have no system ffmpeg and no root
+// access to install one. Harmless no-op locally, where a system ffmpeg is
+// already used.
+try {
+    const ffmpegStaticPath = require('ffmpeg-static');
+    if (ffmpegStaticPath) {
+        const path = require('path');
+        process.env.PATH = `${path.dirname(ffmpegStaticPath)}${path.delimiter}${process.env.PATH}`;
+    }
+} catch (e) {
+    console.error('ffmpeg-static not available:', e.message);
+}
+
 const { Boom } = require('@hapi/boom')
 const fs = require('fs')
 const chalk = require('chalk')
@@ -18,6 +34,8 @@ const path = require('path')
 const axios = require('axios')
 const { handleMessages, handleGroupParticipantUpdate, handleStatus } = require('./main');
 const { refreshGroupCache } = require('./lib/groupInviteCache');
+const { usePostgresAuthState } = require('./lib/postgresAuthState');
+const { startHealthServer } = require('./lib/healthServer');
 const PhoneNumber = require('awesome-phonenumber')
 const { imageToWebp, videoToWebp, writeExifImg, writeExifVid } = require('./lib/exif')
 const { smsg, isUrl, generateMessageTag, getBuffer, getSizeMedia, fetch, await, sleep, reSize } = require('./lib/myfunc')
@@ -94,7 +112,12 @@ const question = (text) => {
 async function startXeonBotInc() {
     try {
         let { version, isLatest } = await fetchLatestBaileysVersion()
-        const { state, saveCreds } = await useMultiFileAuthState(`./session`)
+        // On hosts with an ephemeral filesystem (e.g. Render free tier), the
+        // local ./session folder doesn't survive a restart/spin-down. When a
+        // DATABASE_URL is configured, persist the session in Postgres instead.
+        const { state, saveCreds } = process.env.DATABASE_URL
+            ? await usePostgresAuthState(process.env.DATABASE_URL)
+            : await useMultiFileAuthState(`./session`)
         const msgRetryCounterCache = new NodeCache()
 
         const XeonBotInc = makeWASocket({
@@ -381,6 +404,8 @@ async function startXeonBotInc() {
     }
 }
 
+
+startHealthServer()
 
 // Start the bot with error handling
 startXeonBotInc().catch(error => {

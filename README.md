@@ -61,9 +61,27 @@ La liste complète et détaillée de chaque commande est disponible via `.help` 
 
 ---
 
-## 🚀 Déploiement en production (VM Linux)
+## 🚀 Déploiement en production
 
-Le dossier [`deploy/`](./deploy) contient tout le nécessaire pour un déploiement sur une VM (Oracle Cloud, Hetzner, etc.) :
+### Option A — Render (gratuit)
+
+Le projet est prêt à être déployé sur le [tier gratuit de Render](https://render.com) via le fichier [`render.yaml`](./render.yaml) (Blueprint) :
+
+1. Sur Render : **New → Blueprint**, connecter ce dépôt GitHub
+2. Render crée automatiquement le Web Service **et** une base Postgres gratuite liée
+3. Renseigner les 4 clés API (`GEMINI_API_KEY`, `REMOVEBG_API_KEY`, `PHOTOROOM_API_KEY`, `TELEGRAM_BOT_TOKEN`) quand demandé
+4. Consulter les logs du service pour scanner le code de pairing WhatsApp
+
+**Pourquoi ça fonctionne malgré les limites du tier gratuit :**
+- Le tier gratuit de Render efface le système de fichiers à chaque redémarrage/mise en veille → la session WhatsApp (`session/`) est donc stockée dans **Postgres** à la place (`lib/postgresAuthState.js`), qui persiste indépendamment
+- Le bot expose un petit serveur HTTP (`lib/healthServer.js`) pour que Render lui attribue une URL — configurer un [UptimeRobot](https://uptimerobot.com) (gratuit) pour pinguer cette URL toutes les <15 minutes évite la mise en veille
+- ffmpeg est embarqué via le paquet npm `ffmpeg-static` (aucun accès root nécessaire)
+
+> ⚠️ Le Postgres gratuit de Render expire après 30 jours (14 jours de grâce ensuite). Une fois par mois : recréer la base gratuite, mettre à jour `DATABASE_URL`, et rescanner le pairing WhatsApp.
+
+### Option B — VM Linux (Hetzner, Oracle Cloud, etc.)
+
+Le dossier [`deploy/`](./deploy) contient tout le nécessaire pour un déploiement sur une vraie VM, sans les contraintes du tier gratuit :
 
 - `deploy/setup-vm.sh` : installe Node.js, ffmpeg, git et pm2 en une seule commande
 - `deploy/ecosystem.config.js` : configuration [pm2](https://pm2.keymetrics.io/) pour un fonctionnement en continu (redémarrage automatique en cas de crash ou de reboot)
@@ -73,13 +91,13 @@ git clone https://github.com/NathanArt7/Shadow-Bot.git shadow-bot
 cd shadow-bot
 bash deploy/setup-vm.sh
 npm install
-# créer le .env avec les clés API
+# créer le .env avec les clés API (pas de DATABASE_URL nécessaire ici)
 npm run pm2:start
 npm run pm2:logs      # pour scanner le code de pairing
 pm2 save && pm2 startup   # pour survivre aux redémarrages
 ```
 
-> ⚠️ Le disque de la VM doit être **persistant** : le dossier `session/` contient le pairing WhatsApp et ne doit jamais être effacé entre deux redémarrages, sous peine de devoir rescanner le pairing.
+> Sur une VM, le disque étant persistant nativement, la session reste dans `session/` (pas besoin de Postgres) — s'assurer simplement que `DATABASE_URL` n'est pas défini dans l'environnement.
 
 ---
 
