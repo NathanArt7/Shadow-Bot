@@ -32,7 +32,7 @@ async function playCommand(sock, chatId, message) {
         }, { quoted: message });
 
     } catch (error) {
-        console.error('Error in play command:', error);
+        console.error('Error in play command:', error?.response?.status, error?.code, error?.message);
         await sock.sendMessage(chatId, {
             text: "Échec du téléchargement. Réessaie plus tard."
         });
