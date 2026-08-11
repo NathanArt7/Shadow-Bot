@@ -237,8 +237,17 @@ async function startXeonBotInc() {
         let phoneNumber
         if (!!global.phoneNumber) {
             phoneNumber = global.phoneNumber
-        } else {
+        } else if (process.env.PAIRING_NUMBER) {
+            // Hosted environments (Render, etc.) have no interactive terminal to
+            // type into from the dashboard logs - the number must come from an
+            // env var there instead.
+            phoneNumber = process.env.PAIRING_NUMBER
+        } else if (process.stdin.isTTY) {
             phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFormat: 6281376552730 (without + or spaces) : `)))
+        } else {
+            console.log(chalk.red('No phone number available for pairing and no interactive terminal to ask for one.'))
+            console.log(chalk.red('Set the PAIRING_NUMBER environment variable (digits only, e.g. 22897339278) and restart.'))
+            process.exit(1)
         }
 
         // Clean the phone number - remove any non-digit characters
