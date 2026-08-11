@@ -227,7 +227,9 @@ async function handleMessages(sock, messageUpdate, printLog) {
             const data = JSON.parse(fs.readFileSync('./data/messageCount.json'));
             if (typeof data.isPublic === 'boolean') isPublic = data.isPublic;
         } catch (error) {
-            console.error('Error checking access mode:', error);
+            if (error.code !== 'ENOENT') {
+                console.error('Error checking access mode:', error.message);
+            }
             // default isPublic=true on error
         }
         const isOwnerOrSudoCheck = message.key.fromMe || senderIsOwnerOrSudo;
@@ -471,9 +473,12 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 try {
                     data = JSON.parse(fs.readFileSync('./data/messageCount.json'));
                 } catch (error) {
-                    console.error('Error reading access mode:', error);
-                    await sock.sendMessage(chatId, { text: 'Failed to read bot mode status', ...channelInfo });
-                    return;
+                    if (error.code !== 'ENOENT') {
+                        console.error('Error reading access mode:', error.message);
+                        await sock.sendMessage(chatId, { text: 'Failed to read bot mode status', ...channelInfo });
+                        return;
+                    }
+                    data = { isPublic: true };
                 }
 
                 const action = userMessage.split(' ')[1]?.toLowerCase();
