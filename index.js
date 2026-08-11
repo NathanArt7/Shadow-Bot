@@ -11,6 +11,13 @@
  */
 require('./settings')
 
+// Many command files write their default config into ./data/*.json the
+// moment they're required (not lazily), assuming the folder already exists.
+// That's true after local testing, but data/*.json is gitignored (it holds
+// live runtime data, not template content) - so a fresh clone/deploy has no
+// data/ folder at all until this creates it, before any command is required.
+require('fs').mkdirSync('./data', { recursive: true });
+
 // Make the bundled ffmpeg-static binary available to every `exec("ffmpeg ...")`
 // call across the codebase (sticker/video/audio conversion) by putting it on
 // PATH - needed on hosts like Render that have no system ffmpeg and no root
