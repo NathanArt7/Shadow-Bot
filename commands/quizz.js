@@ -1,4 +1,7 @@
-const { activeQuizzes, TOPICS, normalize, isCorrectAnswer, generateQuestion } = require('../lib/quizz');
+const {
+    activeQuizzes, TOPICS, normalize, isCorrectAnswer, generateQuestion,
+    getHistoricalAvoidList, recordSessionQuestions
+} = require('../lib/quizz');
 
 function buildRecap(scores) {
     const entries = Object.entries(scores).filter(([, pts]) => pts > 0).sort((a, b) => b[1] - a[1]);
@@ -16,15 +19,17 @@ async function askNextQuestion(sock, chatId) {
     const quiz = activeQuizzes[chatId];
     if (!quiz || !quiz.running) return;
 
-    // Ask Gemini to avoid repeats via the prompt, but also verify on our side -
-    // the prompt is only a suggestion, not a guarantee. Retry a few times if a
-    // duplicate slips through before giving up.
-    const askedNormalized = new Set(quiz.askedQuestions.map(normalize));
+    // Avoid both this session's own questions and anything asked in the last
+    // 5 sessions in this chat (cooldown). Ask Gemini to avoid repeats via the
+    // prompt, but also verify on our side since the prompt is only a
+    // suggestion, not a guarantee - retry a few times if a duplicate slips through.
+    const avoidList = [...quiz.historicalAvoid, ...quiz.askedQuestions];
+    const avoidNormalized = new Set(avoidList.map(normalize));
     let q = null;
     for (let attempt = 0; attempt < 4; attempt++) {
-        const candidate = await generateQuestion(quiz.topic, quiz.askedQuestions);
+        const candidate = await generateQuestion(quiz.topic, avoidList);
         if (!candidate) break;
-        if (!askedNormalized.has(normalize(candidate.question))) {
+        if (!avoidNormalized.has(normalize(candidate.question))) {
             q = candidate;
             break;
         }
@@ -80,6 +85,7 @@ async function quizzCommand(sock, chatId, message) {
         scores: {},
         currentQuestion: null,
         askedQuestions: [],
+        historicalAvoid: getHistoricalAvoidList(chatId),
         running: false,
         timeoutHandle: null
     };
@@ -97,6 +103,7 @@ async function quizzStopCommand(sock, chatId, message) {
         return;
     }
     if (quiz.timeoutHandle) clearInterval(quiz.timeoutHandle);
+    recordSessionQuestions(chatId, quiz.askedQuestions);
     const { text: recapText, mentions } = buildRecap(quiz.scores);
     delete activeQuizzes[chatId];
     await sock.sendMessage(chatId, { text: `🛑 Quiz arrêté.\n\n${recapText}`, mentions }, { quoted: message });
