@@ -19,14 +19,14 @@ async function askNextQuestion(sock, chatId) {
     const quiz = activeQuizzes[chatId];
     if (!quiz || !quiz.running) return;
 
-    // Avoid both this session's own questions and anything asked in the last
-    // 5 sessions in this chat (cooldown). Ask Gemini to avoid repeats via the
+    // Avoid both this session's own questions and anything still on cooldown
+    // from recent sessions in this chat. Ask Gemini to avoid repeats via the
     // prompt, but also verify on our side since the prompt is only a
-    // suggestion, not a guarantee - retry a few times if a duplicate slips through.
+    // suggestion, not a guarantee - retry once if a duplicate slips through.
     const avoidList = [...quiz.historicalAvoid, ...quiz.askedQuestions];
     const avoidNormalized = new Set(avoidList.map(normalize));
     let q = null;
-    for (let attempt = 0; attempt < 4; attempt++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
         const candidate = await generateQuestion(quiz.topic, avoidList);
         if (!candidate) break;
         if (!avoidNormalized.has(normalize(candidate.question))) {
