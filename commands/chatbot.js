@@ -79,69 +79,12 @@ async function handleChatbotCommand(sock, chatId, message, match) {
     }
 
     const data = loadUserGroupData();
-    
-    // Get bot's number
-    const botNumber = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-    
-    // Check if sender is bot owner
-    const senderId = message.key.participant || message.participant || message.pushName || message.key.remoteJid;
-    const isOwner = senderId === botNumber;
 
-    // If it's the bot owner, allow access immediately
-    if (isOwner) {
-        if (match === 'on') {
-            await showTyping(sock, chatId);
-            if (data.chatbot[chatId]) {
-                return sock.sendMessage(chatId, { 
-                    text: '*Chatbot is already enabled for this group*',
-                    quoted: message
-                });
-            }
-            data.chatbot[chatId] = true;
-            saveUserGroupData(data);
-            console.log(`✅ Chatbot enabled for group ${chatId}`);
-            return sock.sendMessage(chatId, { 
-                text: '*Chatbot has been enabled for this group*',
-                quoted: message
-            });
-        }
-
-        if (match === 'off') {
-            await showTyping(sock, chatId);
-            if (!data.chatbot[chatId]) {
-                return sock.sendMessage(chatId, { 
-                    text: '*Chatbot is already disabled for this group*',
-                    quoted: message
-                });
-            }
-            delete data.chatbot[chatId];
-            saveUserGroupData(data);
-            console.log(`✅ Chatbot disabled for group ${chatId}`);
-            return sock.sendMessage(chatId, { 
-                text: '*Chatbot has been disabled for this group*',
-                quoted: message
-            });
-        }
-    }
-
-    // For non-owners, check admin status
-    let isAdmin = false;
-    if (chatId.endsWith('@g.us')) {
-        try {
-            const groupMetadata = await sock.groupMetadata(chatId);
-            isAdmin = groupMetadata.participants.some(p => p.id === senderId && (p.admin === 'admin' || p.admin === 'superadmin'));
-        } catch (e) {
-            console.warn('⚠️ Could not fetch group metadata. Bot might not be admin.');
-        }
-    }
-
-    if (!isAdmin && !isOwner) {
-        await showTyping(sock, chatId);
-        return sock.sendMessage(chatId, {
-            text: '❌ Only group admins or the bot owner can use this command.',
-            quoted: message
-        });
-    }
+    // Permission (admin or bot owner) is already checked by the caller in
+    // main.js using isAdmin()/message.key.fromMe, which correctly handles
+    // WhatsApp's LID vs phone-number JID formats. Re-checking here with a
+    // naive senderId === botNumber string comparison (the previous code)
+    // ignored LID entirely and could wrongly deny the real owner/admins.
 
     if (match === 'on') {
         await showTyping(sock, chatId);
